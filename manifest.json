@@ -1,0 +1,57 @@
+{
+ "version": "1",
+ "kernel": {
+  "file": "kernel.bin",
+  "size": 3654144
+ },
+ "parts": [
+  {
+   "file": "root.part00",
+   "size": 24117248
+  },
+  {
+   "file": "root.chunk00",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk01",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk02",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk03",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk04",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk05",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk06",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk07",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk08",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk09",
+   "size": 8388608
+  },
+  {
+   "file": "root.chunk10",
+   "size": 3698688
+  }
+ ]
+}

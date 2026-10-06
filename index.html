@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#04070c">
+<title>LinuxLab Terminal - practice real Linux commands in your browser</title>
+<meta name="description" content="A real Linux kernel running inside your browser. Practice sysadmin interview commands with guided lessons. Free, no login, works on phones.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="xterm.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="scan"></div>
+<header class="top">
+  <div class="brand"><span class="logo">&#9654;_</span><div><b>LinuxLab</b><small>real Linux in your browser</small></div></div>
+  <div class="status"><span id="dot" class="dot"></span><span id="stat">booting</span></div>
+  <div class="actions">
+    <button id="btnSave" title="Save my files in this browser">Save</button>
+    <button id="btnExport" title="Download my files as a .tgz">Export</button>
+    <button id="btnImport" title="Load a previously exported .tgz">Import</button>
+    <button id="btnReboot" title="Restart the virtual machine">Reboot VM</button>
+    <input type="file" id="fileImport" accept=".tgz,.gz" hidden>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="side" id="side">
+    <nav class="tabs" id="tabs">
+      <button data-tab="learn" class="on">Lessons</button>
+      <button data-tab="ref">Commands</button>
+      <button data-tab="about">Limits</button>
+    </nav>
+    <section id="tab-learn" class="tab on">
+      <div class="progress"><div id="pbar"></div><span id="ptxt">0 / 0 tasks</span></div>
+      <div id="lessonList"></div>
+    </section>
+    <section id="tab-ref" class="tab">
+      <input id="refSearch" type="search" placeholder="Search commands (chmod, ps, systemctl...)" autocomplete="off">
+      <p class="muted">Tap a command to type it into the terminal. Cards marked <i class="tag ref">reference</i> do not exist in this VM.</p>
+      <div id="refList"></div>
+    </section>
+    <section id="tab-about" class="tab"></section>
+  </aside>
+
+  <section class="termwrap" id="termwrap">
+    <div id="term"></div>
+    <div id="boot" class="boot">
+      <div class="bootbox">
+        <div class="spin"></div>
+        <h2 id="bootTitle">Starting virtual machine</h2>
+        <div class="bar"><div id="bootbar"></div></div>
+        <p id="bootmsg">Downloading kernel (10 MB, cached after first visit)...</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="keybar" id="keybar">
+  <button data-k="esc">Esc</button><button data-k="tab">Tab</button><button id="kCtrl" data-k="ctrl">Ctrl</button>
+  <button data-k="c-c">^C</button><button data-k="c-d">^D</button><button data-k="c-l">^L</button>
+  <button data-k="up">&uarr;</button><button data-k="down">&darr;</button><button data-k="left">&larr;</button><button data-k="right">&rarr;</button>
+  <button data-t="|">|</button><button data-t="/">/</button><button data-t="~">~</button><button data-t="-">-</button><button data-t="&amp;">&amp;</button><button data-t=">">&gt;</button><button data-t="*">*</button>
+</div>
+
+<nav class="bottom" id="bottom">
+  <button data-view="term" class="on">Terminal</button>
+  <button data-view="learn">Lessons</button>
+  <button data-view="ref">Commands</button>
+  <button data-view="about">Limits</button>
+</nav>
+<div id="toast" class="toast"></div>
+
+<script src="xterm.js"></script>
+<script src="addon-fit.js"></script>
+<script src="libv86.js"></script>
+<script src="content.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
