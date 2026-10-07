@@ -48,3 +48,5 @@ button:hover,button.on{border-color:var(--cy);box-shadow:0 0 10px rgba(25,240,20
  .keybar{display:flex}.bottom{display:flex}
  body[data-view!=term] .keybar{display:none}
 }
+/* Keep the extra controls reachable on small phones without changing the layout. */
+@media(max-width:860px){.top{flex-wrap:wrap}.actions{width:100%;overflow-x:auto;flex-shrink:0;padding-bottom:2px}.actions button{flex-shrink:0;white-space:nowrap}.status{margin-left:auto}}

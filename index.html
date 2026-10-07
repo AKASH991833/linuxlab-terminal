@@ -21,6 +21,8 @@
     <button id="btnExport" title="Download my files as a .tgz">Export</button>
     <button id="btnImport" title="Load a previously exported .tgz">Import</button>
     <button id="btnReboot" title="Restart the virtual machine">Reboot VM</button>
+    <button id="btnOffline" title="Cache the complete system and app for offline use">Download offline</button>
+    <button id="btnReset" title="Remove saved practice state and boot a clean VM">Reset lab</button>
     <input type="file" id="fileImport" accept=".tgz,.gz" hidden>
   </div>
 </header>
@@ -51,7 +53,7 @@
         <div class="spin"></div>
         <h2 id="bootTitle">Starting virtual machine</h2>
         <div class="bar"><div id="bootbar"></div></div>
-        <p id="bootmsg">Downloading kernel (10 MB, cached after first visit)...</p>
+        <p id="bootmsg">Downloading kernel, then loading only the disk blocks needed...</p>
       </div>
     </div>
   </section>

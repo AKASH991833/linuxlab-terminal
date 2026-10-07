@@ -3,7 +3,7 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const CFG={ parts:4, memory:256, kernel:"bzImage", diskParts:null };
 const LS="linuxlab.progress.v1";
-let emulator=null, term, fit, typed="", ctrlArmed=false, ready=false, outBuf=[], raf=0;
+let emulator=null, term, fit, typed="", ctrlArmed=false, ready=false, skipRestore=false, outBuf=[], raf=0;
 const done=new Set(JSON.parse(localStorage.getItem(LS)||"[]"));
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),2600)}
 function setStat(t,c){$("#stat").textContent=t;$("#dot").className="dot "+(c||"")}
@@ -35,15 +35,11 @@ async function boot(){
   title.textContent="Starting virtual machine";
   try{
     const man=await (await fetch("manifest.json",{cache:"no-cache"})).json();
-    const total=man.parts.reduce((a,p)=>a+p.size,0)+man.kernel.size;let base=0;
-    const prog=(got)=>{const pct=Math.min(99,Math.round((base+got)/total*100));bar.style.width=pct+"%";msg.textContent="Downloading system image... "+pct+"% ("+((base+got)/1048576).toFixed(0)+" / "+(total/1048576).toFixed(0)+" MB, cached after first visit)"};
-    const kernel=await fetchBuf(man.kernel.file+"?v="+man.version,g=>prog(g));base+=man.kernel.size;
-    const bufs=[];for(const p of man.parts){bufs.push(await fetchBuf(p.file+"?v="+man.version,prog));base+=p.size}
-    const disk=new Uint8Array(bufs.reduce((a,b)=>a+b.byteLength,0));let o=0;for(const b of bufs){disk.set(new Uint8Array(b),o);o+=b.byteLength}
+    const kernel=await fetchBuf(man.kernel.file+"?v="+man.version,g=>{bar.style.width=Math.min(95,g/man.kernel.size*100)+"%";msg.textContent="Downloading kernel... "+(g/1048576).toFixed(1)+" MB"});
     const bios=await fetchBuf("seabios.bin"),vga=await fetchBuf("vgabios.bin");
-    bar.style.width="100%";title.textContent="Booting Debian (this takes a while)";msg.textContent="Real systemd boot inside an emulated PC. Typically 1-3 minutes on a phone, faster on a laptop. Watch the log.";
+    bar.style.width="100%";title.textContent="Booting Debian (this takes a while)";msg.textContent="Loading only the disk blocks Linux needs, not the full image. Real systemd boot. Keep this tab open; slower connections and phones take longer.";
     if(emulator){try{emulator.destroy()}catch(e){}}
-    emulator=new V86({wasm_path:"v86.wasm",memory_size:CFG.memory*1024*1024,vga_memory_size:2*1024*1024,bios:{buffer:bios},vga_bios:{buffer:vga},bzimage:{buffer:kernel},hda:{buffer:disk.buffer},filesystem:{},
+    emulator=new V86({wasm_path:"v86.wasm",memory_size:CFG.memory*1024*1024,vga_memory_size:2*1024*1024,bios:{buffer:bios},vga_bios:{buffer:vga},bzimage:{buffer:kernel},hda:{url:man.root.file+"?v="+man.version,async:true,size:man.root.size,fixed_chunk_size:262144},hdb:{url:man.repo.file+"?v="+man.version,async:true,size:man.repo.size,fixed_chunk_size:262144},filesystem:{},
       cmdline:"console=ttyS0 noapic nolapic tsc=reliable mitigations=off random.trust_cpu=on loglevel=3 systemd.show_status=1 systemd.log_level=warning",autostart:true,disable_keyboard:true,disable_mouse:true});
     let txt="";
     emulator.add_listener("serial0-output-byte",b=>{outBuf.push(b);if(!raf)raf=requestAnimationFrame(flush);
@@ -51,7 +47,7 @@ async function boot(){
   }catch(e){console.error(e);setStat("error","bad");msg.textContent="Could not start the VM: "+e.message+". Check your connection and reload."}
 }
 function flush(){raf=0;if(outBuf.length){term.write(new Uint8Array(outBuf));outBuf=[]}}
-function onReady(){setStat("running","ok");$("#boot").classList.add("hide");doFit();term.focus();toast("Linux is ready. Try the first lesson.");restoreSaved()}
+function onReady(){setStat("running","ok");$("#boot").classList.add("hide");doFit();term.focus();toast("Linux is ready. Try the first lesson.");if(!skipRestore)restoreSaved();skipRestore=false;}
 
 /* ---------- save / export / import ---------- */
 const SAVE_DIRS="root home etc/passwd etc/shadow etc/group etc/gshadow etc/subuid etc/subgid etc/ssh etc/sudoers.d etc/systemd/system etc/fstab etc/hosts var/spool/cron srv opt usr/local data";
@@ -73,11 +69,42 @@ async function applyRestore(buf){if(!ready){toast("Wait until Linux is ready");r
 async function restoreSaved(){try{const d=await idb("readonly",s=>s.get("save"));if(d&&d.byteLength>0){await applyRestore(new Uint8Array(d))}}catch(e){}}
 $("#btnReboot").onclick=()=>{if(confirm("Restart the VM? Unsaved changes are lost (use Save first)."))boot()};
 
+/* ---------- offline preparation / clean reset ---------- */
+$("#btnReset").onclick=async()=>{
+  if(!confirm("Reset the lab to a clean machine? Saved files, current VM changes and lesson ticks in THIS browser will be removed. Export anything you want to keep first."))return;
+  try{await idb("readwrite",s=>s.delete("save"));done.clear();persist();renderLessons();skipRestore=true;boot()}catch(e){toast("Reset failed: "+e.message)}
+};
+$("#btnOffline").onclick=async()=>{
+  const b=$("#btnOffline");b.disabled=true;
+  try{
+    if(!("serviceWorker" in navigator))throw new Error("Offline caching is not supported in this browser");
+    await navigator.serviceWorker.ready;
+    const man=await (await fetch("manifest.json",{cache:"no-cache"})).json();
+    const cache=await caches.open("linuxlab-v2");
+    const urls=["./","index.html","style.css","xterm.css","xterm.js","addon-fit.js","libv86.js","content.js","app.js","manifest.json","manifest.webmanifest","icon.svg","seabios.bin","vgabios.bin","v86.wasm",man.kernel.file+"?v="+man.version];
+    for(let i=0;i<urls.length;i++){
+      b.textContent="Offline "+Math.round(i/urls.length*100)+"%";
+      const r=await fetch(urls[i]);if(!r.ok)throw new Error(urls[i]+" "+r.status);
+      await cache.put(urls[i],r);
+    }
+    for(const disk of [man.root,man.repo]){
+      for(let offset=0;offset<disk.size;offset+=262144){
+        const end=offset+262143;
+        const r=await fetch(disk.file+"?v="+man.version,{headers:{Range:"bytes="+offset+"-"+end}});
+        if(r.status===507)throw new Error("Not enough browser storage. Free space and retry.");if(r.status!==206)throw new Error("Server must support disk ranges");await r.arrayBuffer();
+        b.textContent="Offline "+Math.round((offset+262144)/disk.size*100)+"%";
+      }
+    }
+    b.textContent="Offline ready";toast("Full system cached in this browser. Offline use is ready; browsers can still evict storage.");
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+  }catch(e){b.textContent="Download offline";toast("Offline download failed: "+e.message)}finally{b.disabled=false}
+};
+
 /* ---------- lessons UI ---------- */
 function persist(){localStorage.setItem(LS,JSON.stringify([...done]))}
 function counts(){let n=0,d=0;LESSONS.forEach(l=>l.tasks.forEach((t,i)=>{n++;if(done.has(l.id+":"+i))d++}));$("#pbar").style.width=(n?d/n*100:0)+"%";$("#ptxt").textContent=d+" / "+n+" tasks";LESSONS.forEach(l=>{const c=l.tasks.filter((t,i)=>done.has(l.id+":"+i)).length;const e=$("#cnt-"+l.id);if(e)e.textContent=c+"/"+l.tasks.length})}
 function renderLessons(){
-  const box=$("#lessonList");box.innerHTML="";
+  const box=$("#lessonList");box.innerHTML='<div class="story"><b>First steps</b><br>You are root. Your home is /root. This is a server, so Desktop and Downloads folders are not created automatically. Use pwd to see your location, ls /etc to list a folder, and cat /etc/os-release to read a file. cat /etc fails because /etc is a folder. Try: cd ~; echo hello &gt; notes.txt; cat notes.txt. Linux paths and commands are case-sensitive.</div>';
   LESSONS.forEach((l,li)=>{
     const d=document.createElement("details");d.className="lesson";if(li===0)d.open=true;
     d.innerHTML=`<summary><span class="num">${l.icon}</span><span class="lt"><b>${l.title}</b><small>${l.level}</small></span><span class="cnt" id="cnt-${l.id}"></span></summary><div class="story">${l.story}</div>`;
@@ -101,16 +128,17 @@ function renderRef(q){
     const h=document.createElement("div");h.className="rg";h.innerHTML=g.g+(g.run?"":' <i class="tag ref">reference</i>');box.appendChild(h);
     items.forEach(it=>{const r=document.createElement("div");r.className="ri"+(g.run?"":" noref");r.innerHTML="<code></code><span></span>";r.firstChild.textContent=it[0];r.lastChild.textContent=it[1];if(g.run)r.onclick=()=>{go();typeLine(it[0]);track(it[0])};box.appendChild(r)})})}
 $("#refSearch").oninput=e=>renderRef(e.target.value);
-function renderAbout(){$("#tab-about").innerHTML=`<h3>What this is</h3><p>A real Debian 12 (i386) Linux machine with the real kernel, systemd, apt/dpkg, sshd, cron and rsyslog, emulated inside your browser tab with the open-source <b>v86</b> x86 emulator. Nothing is sent to a server: no login, no cost, works offline after the first load.</p>
+function renderAbout(){$("#tab-about").innerHTML=`<h3>What this is</h3><p>A real Debian 12 (i386) Linux machine with the real kernel, systemd, apt/dpkg, sshd, cron and rsyslog, emulated inside your browser tab with the open-source <b>v86</b> x86 emulator. Nothing is sent to a server: no login, no cost, loads disk blocks on demand; use Download offline to cache the full system.</p>
 <h3>Honest limits</h3><ul>
 <li><b>Speed:</b> it is an emulated PC. Boot takes about 1-3 minutes on a phone (less on a laptop) and commands run slower than on real hardware. Heavy jobs (compiling, big archives) are slow.</li>
 <li><b>No internet inside the VM.</b> ping/curl/dig to the outside will fail. Localhost, loopback, dummy interfaces, ssh to localhost, nginx on localhost all work. apt uses a small built-in offline repository (nginx, jq, tmux, ncdu) - real apt, real dpkg, but not the full Debian archive.</li>
 <li><b>Single machine:</b> you cannot ssh between two VMs. Practice SSH against localhost.</li>
-<li><b>Hardware features missing:</b> no real disks to partition (use image files and loop devices), no LVM or RAID, no GPU, no Docker (needs more kernel features and RAM), no SELinux.</li>
+<li><b>Hardware features missing:</b> no real disks to partition (use image files and loop devices), LVM and RAID work on loop devices, no GPU, no Docker (needs more kernel features and RAM), no SELinux.</li>
 <li><b>Persistence:</b> the VM resets on reload. <b>Save</b> stores your home, /etc users, ssh, systemd units, cron and /srv in this browser (restored automatically next time). <b>Export / Import</b> moves that bundle as a .tgz file. Installed packages and logs are not saved.</li>
+<li><b>Offline:</b> Download offline fetches the full system (about 114 MB) and app into this browser. Until it finishes, newly used disk blocks need a connection. Browser storage can be evicted; the button will report download failures. Reset lab clears saved files and lesson ticks, not the offline cache.</li>
 <li><b>Phones:</b> use the key bar above the keyboard for Tab, Ctrl, Esc and arrows. Landscape mode gives more room. Keep the tab in the foreground; browsers pause background tabs.</li>
 <li><b>Task ticks</b> are detected from commands you type and can also be ticked by hand. They are stored in this browser only.</li></ul>
-<h3>Differences from your office server</h3><ul><li>RedHat-family systems use dnf/rpm, firewalld and SELinux. Those are in the Commands tab as reference only.</li><li>Real servers have real network, disks, monitoring and users. The commands and the thinking are the same.</li></ul>`}
+<h3>Differences from your office server</h3><ul><li>RedHat-family systems use dnf/rpm, firewalld and SELinux. dnf/yum, firewalld and SELinux are reference only. Real rpm/rpmbuild work via the offline package lesson.</li><li>Real servers have real network, disks, monitoring and users. The commands and the thinking are the same.</li></ul>`}
 
 /* ---------- navigation ---------- */
 function view(v){document.body.dataset.view=v;$$("#bottom button").forEach(b=>b.classList.toggle("on",b.dataset.view===v));if(v!=="term"){$$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===v));$$(".tab").forEach(t=>t.classList.toggle("on",t.id==="tab-"+v))}else setTimeout(()=>{doFit();term.focus()},60)}
