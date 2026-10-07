@@ -44,9 +44,9 @@ button:hover,button.on{border-color:var(--cy);box-shadow:0 0 10px rgba(25,240,20
  .top{padding:6px 8px;gap:6px}.brand small{display:none}.actions button{padding:4px 6px;font-size:11px}#btnImport{display:none}
  .layout{display:block;position:relative;flex:1}
  .side,.termwrap{position:absolute;inset:0;border:0}.side{z-index:4;display:none;background:#060e16}
- body[data-view=learn] .side,body[data-view=ref] .side,body[data-view=about] .side{display:block}
+ body[data-view=practice] .side,body[data-view=learn] .side,body[data-view=ref] .side,body[data-view=about] .side{display:block}
  .keybar{display:flex}.bottom{display:flex}
- body[data-view!=term] .keybar{display:none}
+ body:not([data-view=term]) .keybar{display:none}
 }
 /* Keep the extra controls reachable on small phones without changing the layout. */
 @media(max-width:860px){.top{flex-wrap:wrap}.actions{width:100%;overflow-x:auto;flex-shrink:0;padding-bottom:2px}.actions button{flex-shrink:0;white-space:nowrap}.status{margin-left:auto}}
@@ -54,3 +54,4 @@ button:hover,button.on{border-color:var(--cy);box-shadow:0 0 10px rgba(25,240,20
 /* Pre-kernel loader status stays small; genuine console output is never covered. */
 .boot{inset:auto 12px 12px auto;display:block;background:rgba(2,6,10,.9);border:1px solid var(--line);border-radius:4px;padding:10px;max-width:calc(100% - 24px);pointer-events:none}
 .bootbox{width:min(400px,100%);text-align:left}.bootbox h2{font-size:12px;margin:0 0 8px}.bootbox p{font-size:11px;margin:8px 0 0}.boot .spin{display:none}
+.practice-nav{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.practice-nav button{flex:1;min-width:90px;font-size:12px}.practice-status{border:1px solid var(--bl);padding:10px;color:var(--cy)}#tab-practice .task{margin:10px 0}#tab-practice .task>button{margin:3px}#tab-practice input{width:100%;background:#08111a;color:var(--tx);padding:10px;border:1px solid var(--line);margin-bottom:12px}.completion-card{width:100%;height:auto;display:block;margin:12px 0}.tabs button{padding:6px;font-size:12px}button:disabled{opacity:.45;cursor:not-allowed}
