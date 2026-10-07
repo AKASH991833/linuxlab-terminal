@@ -30,21 +30,26 @@ async function fetchBuf(url,onp){
   const out=new Uint8Array(got);let o=0;for(const c of chunks){out.set(c,o);o+=c.length}return out.buffer;
 }
 async function boot(){
-  ready=false;setStat("booting","");$("#boot").classList.remove("hide");term.reset();
+  ready=false;setStat("booting","");$("#boot").classList.remove("hide");term.reset();outBuf=[];
+  term.writeln("\x1b[36m[LinuxLab loader]\x1b[0m Preparing browser VM assets...");
   const bar=$("#bootbar"),msg=$("#bootmsg"),title=$("#bootTitle");
-  title.textContent="Starting virtual machine";
+  title.textContent="Preparing Linux boot";msg.textContent="Preparing browser assets. Live Linux console appears as soon as the kernel starts.";
   try{
     const man=await (await fetch("manifest.json",{cache:"no-cache"})).json();
     const kernel=await fetchBuf(man.kernel.file+"?v="+man.version,g=>{bar.style.width=Math.min(95,g/man.kernel.size*100)+"%";msg.textContent="Downloading kernel... "+(g/1048576).toFixed(1)+" MB"});
+    term.writeln("[LinuxLab loader] Kernel loaded: "+kernel.byteLength+" bytes. Loading firmware...");
     const bios=await fetchBuf("seabios.bin"),vga=await fetchBuf("vgabios.bin");
     bar.style.width="100%";title.textContent="Booting Debian (this takes a while)";msg.textContent="Loading only the disk blocks Linux needs, not the full image. Real systemd boot. Keep this tab open; slower connections and phones take longer.";
     if(emulator){try{emulator.destroy()}catch(e){}}
     emulator=new V86({wasm_path:"v86.wasm",memory_size:CFG.memory*1024*1024,vga_memory_size:2*1024*1024,bios:{buffer:bios},vga_bios:{buffer:vga},bzimage:{buffer:kernel},hda:{url:man.root.file+"?v="+man.version,async:true,size:man.root.size,fixed_chunk_size:262144},hdb:{url:man.repo.file+"?v="+man.version,async:true,size:man.repo.size,fixed_chunk_size:262144},filesystem:{},
-      cmdline:"console=ttyS0 noapic nolapic tsc=reliable mitigations=off random.trust_cpu=on loglevel=3 systemd.show_status=1 systemd.log_level=warning",autostart:true,disable_keyboard:true,disable_mouse:true});
+      cmdline:"console=ttyS0 noapic nolapic tsc=reliable mitigations=off random.trust_cpu=on loglevel=6 systemd.show_status=1 systemd.log_level=warning",autostart:true,disable_keyboard:true,disable_mouse:true});
+    term.writeln("[LinuxLab loader] Firmware loaded. Starting the real Linux kernel...");
+    term.writeln("[LinuxLab loader] Disk blocks load on demand. Output below is the live guest console.\r\n");
+    $("#boot").classList.add("hide");doFit();
     let txt="";
     emulator.add_listener("serial0-output-byte",b=>{outBuf.push(b);if(!raf)raf=requestAnimationFrame(flush);
       if(!ready){txt+=String.fromCharCode(b);if(txt.length>600)txt=txt.slice(-300);if(/@linuxlab:[^\n]*[#$] $/.test(txt.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g,''))){ready=true;onReady()}}});
-  }catch(e){console.error(e);setStat("error","bad");msg.textContent="Could not start the VM: "+e.message+". Check your connection and reload."}
+  }catch(e){console.error(e);setStat("error","bad");term.writeln("\r\n[LinuxLab loader] Boot error: "+e.message);$("#boot").classList.remove("hide");msg.textContent="Could not start the VM: "+e.message+". Check your connection and reload."}
 }
 function flush(){raf=0;if(outBuf.length){term.write(new Uint8Array(outBuf));outBuf=[]}}
 function onReady(){setStat("running","ok");$("#boot").classList.add("hide");doFit();term.focus();toast("Linux is ready. Try the first lesson.");if(!skipRestore)restoreSaved();skipRestore=false;}
