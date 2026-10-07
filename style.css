@@ -50,3 +50,7 @@ button:hover,button.on{border-color:var(--cy);box-shadow:0 0 10px rgba(25,240,20
 }
 /* Keep the extra controls reachable on small phones without changing the layout. */
 @media(max-width:860px){.top{flex-wrap:wrap}.actions{width:100%;overflow-x:auto;flex-shrink:0;padding-bottom:2px}.actions button{flex-shrink:0;white-space:nowrap}.status{margin-left:auto}}
+
+/* Pre-kernel loader status stays small; genuine console output is never covered. */
+.boot{inset:auto 12px 12px auto;display:block;background:rgba(2,6,10,.9);border:1px solid var(--line);border-radius:4px;padding:10px;max-width:calc(100% - 24px);pointer-events:none}
+.bootbox{width:min(400px,100%);text-align:left}.bootbox h2{font-size:12px;margin:0 0 8px}.bootbox p{font-size:11px;margin:8px 0 0}.boot .spin{display:none}
