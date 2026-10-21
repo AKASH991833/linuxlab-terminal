@@ -1,5 +1,10 @@
 # LinuxLab - a real Linux terminal in your browser
 
+**Live lab:** https://akash991833.github.io/linuxlab-terminal/
+
+![LinuxLab running a real Debian terminal in the browser](screenshots/home-desktop.png)
+
+
 Practice Linux sysadmin interview skills on your phone or laptop. No install, no account, no server.
 A real **Debian 12 (i386)** machine boots inside your browser tab using the [v86](https://github.com/copy/v86) x86 emulator (WebAssembly). Everything runs client-side.
 
